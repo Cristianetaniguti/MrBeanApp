@@ -100,8 +100,8 @@ mod_import_dt_ui <- function(id) {
                   condition = "input.miss=='Other'",
                   ns = ns,
                   textInput(ns("datamiss"),
-                    label = "String",
-                    width = "100%"
+                            label = "String",
+                            width = "100%"
                   )
                 ),
                 selectInput(
@@ -189,7 +189,7 @@ mod_import_dt_ui <- function(id) {
               solidHeader = FALSE,
               width = 12,
               status = "success",
-              h3("How to connect BrAPI in MrBean?"),
+              h3("How to connect BrAPI server to MrBean?"),
               hr(),
               suppressWarnings(
                 includeHTML(
@@ -203,7 +203,7 @@ mod_import_dt_ui <- function(id) {
           width = 4,
           fluidRow(
             bs4Dash::box(
-              title = tagList(shiny::icon("users"), "BMS"),
+              title = tagList(shiny::icon("users"), "Server"),
               solidHeader = FALSE,
               width = 12,
               status = "success",
@@ -217,11 +217,12 @@ mod_import_dt_ui <- function(id) {
                     title = "For example:
                      https://cassavabase.org
                      https://sweetpotatobase.org
-                     https://bms.ciat.cgiar.org/",
+                     https://bms.ciat.cgiar.org/
+                     https://qa-test.breedinginsight.net",
                     placement = "top"
                   )
                 ),
-                value = "https://bms.ciat.cgiar.org/ibpworkbench/controller/auth/login",
+                value = "https://<server>/<path>",
                 width = "100%"
               ),
               awesomeCheckbox(
@@ -235,7 +236,8 @@ mod_import_dt_ui <- function(id) {
                 label = "Engine:",
                 choices = c(
                   "BMS" = "bms",
-                  "BreedBase" = "breedbase"
+                  "BreedBase" = "breedbase",
+                  "DeltaBreed" = "deltabreed"
                 ),
                 icon = icon("check"),
                 inline = TRUE,
@@ -244,7 +246,7 @@ mod_import_dt_ui <- function(id) {
                 animation = "jelly"
               ),
               conditionalPanel(
-                condition = "input.no_auth==false",
+                condition = "input.no_auth==false & input.engine!='deltabreed'",
                 ns = ns,
                 textInput(
                   ns("user"),
@@ -255,6 +257,16 @@ mod_import_dt_ui <- function(id) {
                 passwordInput(
                   ns("password"),
                   label = tagList(shiny::icon("key"), "Password:"),
+                  width = "100%",
+                  placeholder = "*****************"
+                )
+              ),
+              conditionalPanel(
+                condition = "input.no_auth==false & input.engine=='deltabreed'",
+                ns = ns,
+                passwordInput(
+                  ns("token"),
+                  label = tagList(shiny::icon("key"), "Token:"),
                   width = "100%",
                   placeholder = "*****************"
                 )
@@ -373,7 +385,7 @@ mod_import_dt_ui <- function(id) {
 #' @noRd
 mod_import_dt_server <- function(input, output, session) {
   ns <- session$ns
-
+  
   observe({
     shinyjs::show(
       id = "when_file1",
@@ -387,12 +399,12 @@ mod_import_dt_server <- function(input, output, session) {
     )
   }) %>%
     bindEvent(input$file1)
-
+  
   output$oshet <- renderUI({
     inFile <- input$file1
     Ext <- tools::file_ext(inFile$datapath)
     req(input$file1, Ext == "xlsx" | Ext == "xls")
-
+    
     selectInput(
       inputId = ns("sheet"),
       label = "Sheet Excel",
@@ -400,26 +412,34 @@ mod_import_dt_server <- function(input, output, session) {
       width = "100%"
     )
   })
-
+  
   # BMS interface -----------------------------------------------------------
-
+  
   w <- Waiter$new(
     html = HTML("<center> <div class='ball-loader'></div> </center>"),
     color = transparent(0.3)
   )
-
+  
   bmscon <- reactive({
     input$mysql
     isolate({
       tryCatch(
         {
-          tmpbms <- qbmsbrapi(
-            url = input$urlbms,
-            username = input$user,
-            password = input$password,
-            engine = input$engine,
-            no_auth = input$no_auth
-          )
+          if(input$engine != "deltabreed"){
+            tmpbms <- qbmsbrapi(
+              url = input$urlbms,
+              username = input$user,
+              password = input$password,
+              engine = input$engine,
+              no_auth = input$no_auth
+            )
+          } else {
+            tmpbms <- qbmsbrapi(
+              url = input$urlbms,
+              engine = "deltabreed",
+              password = input$token
+            )
+          }
         },
         error = function(e) {
           shinytoastr::toastr_error(
@@ -436,7 +456,7 @@ mod_import_dt_server <- function(input, output, session) {
       return(tmpbms)
     })
   })
-
+  
   observe({
     if (is.null(bmscon())) {
       shinyalert::shinyalert(
@@ -466,12 +486,14 @@ mod_import_dt_server <- function(input, output, session) {
     }
   }) %>%
     bindEvent(input$mysql)
-
+  
   programs <- reactive({
     crop <- input$Id008
     tryCatch(
       {
-        list_programs <- qbmsprograms(crop = crop)
+        if(input$engine != "deltabreed") 
+          list_programs <- qbmsprograms(crop = crop)
+        else list_programs <- qbmsprograms()
       },
       error = function(e) {
         shinytoastr::toastr_error(
@@ -487,7 +509,7 @@ mod_import_dt_server <- function(input, output, session) {
     if (!exists("list_programs")) list_programs <- NULL
     return(list_programs[[1]])
   })
-
+  
   observe({
     if (is.null(programs())) {
       return()
@@ -501,7 +523,7 @@ mod_import_dt_server <- function(input, output, session) {
     }
   }) %>%
     bindEvent(input$Id008, ignoreInit = TRUE)
-
+  
   trials <- reactive({
     w$show()
     tryCatch(
@@ -524,7 +546,7 @@ mod_import_dt_server <- function(input, output, session) {
     if (!exists("list_trials")) list_trials <- NULL
     return(list_trials$trialName)
   })
-
+  
   observe({
     if (is.null(trials())) {
       options <- ""
@@ -534,7 +556,7 @@ mod_import_dt_server <- function(input, output, session) {
     updatePickerInput(session, inputId = "trial", choices = options)
   }) %>%
     bindEvent(input$program, ignoreInit = TRUE)
-
+  
   studies <- reactive({
     w$show()
     tryCatch(
@@ -542,8 +564,8 @@ mod_import_dt_server <- function(input, output, session) {
         list_studies <- lapply(input$trial, qbmsstudies)
         names(list_studies) <- input$trial
         dt_std <- data.frame(plyr::ldply(list_studies[],
-          data.frame,
-          .id = "trial"
+                                         data.frame,
+                                         .id = "trial"
         ))
       },
       error = function(e) {
@@ -562,7 +584,7 @@ mod_import_dt_server <- function(input, output, session) {
     if (!exists("dt_std")) dt_std <- NULL
     return(dt_std)
   })
-
+  
   observe({
     if (is.null(studies())) {
       options <- ""
@@ -572,9 +594,9 @@ mod_import_dt_server <- function(input, output, session) {
     updatePickerInput(session, inputId = "study", choices = options)
   }) %>%
     bindEvent(input$trial, ignoreInit = TRUE)
-
+  
   # data --------------------------------------------------------------------
-
+  
   DtReact <- reactive({
     input$ok2
     isolate({
@@ -600,8 +622,8 @@ mod_import_dt_server <- function(input, output, session) {
       return(datos)
     })
   })
-
-
+  
+  
   dataset <- reactive({
     tryCatch(
       {
@@ -628,7 +650,7 @@ mod_import_dt_server <- function(input, output, session) {
       }
     )
   })
-
+  
   # Subset data
   observe({
     updatePrettyCheckbox(
@@ -638,7 +660,7 @@ mod_import_dt_server <- function(input, output, session) {
     )
   }) %>%
     bindEvent(input$file1)
-
+  
   observe({
     updateSelectInput(
       session,
@@ -647,7 +669,7 @@ mod_import_dt_server <- function(input, output, session) {
       selected = "NNNNN"
     )
   })
-
+  
   observe({
     toggle(
       "varsubset",
@@ -656,13 +678,13 @@ mod_import_dt_server <- function(input, output, session) {
       animType = "fade"
     )
     toggle("levelessub",
-      anim = TRUE,
-      time = 1,
-      animType = "fade"
+           anim = TRUE,
+           time = 1,
+           animType = "fade"
     )
   }) %>%
     bindEvent(input$subset)
-
+  
   observe({
     if (input$varsubset != "") {
       lvl <- dataset()[, input$varsubset]
@@ -677,7 +699,7 @@ mod_import_dt_server <- function(input, output, session) {
     )
   }) %>%
     bindEvent(input$varsubset, input$subset, ignoreInit = TRUE)
-
+  
   dataset_sub <- reactive({
     data_subset(
       data = dataset(),
@@ -686,7 +708,7 @@ mod_import_dt_server <- function(input, output, session) {
       level = input$levelessub
     )
   })
-
+  
   output$data <- DT::renderDataTable({
     DT::datatable(
       {
@@ -707,7 +729,7 @@ mod_import_dt_server <- function(input, output, session) {
     )
   }) %>%
     bindEvent(dataset_sub())
-
+  
   return(list(data = dataset_sub))
 }
 

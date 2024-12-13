@@ -11,12 +11,13 @@
 #' @return a list
 #' @noRd
 qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/auth/login",
-                      engine = c("bms", "breedbase"),
-                      path = ifelse(engine == "bms", "bmsapi", ""),
+                      engine = c("bms", "breedbase","deltabreed"), # This was "" in the BI mod version for deltabreed
+                      path = ifelse(engine == "bms", "bmsapi", "deltabreed"),
                       time_out = ifelse(engine == "bms", 120, 300),
                       no_auth = FALSE,
                       username = NULL,
-                      password = NULL) {
+                      password = NULL, 
+                      brapi_ver = 'v2') {
   if (is.null(url) | url == "") {
     return()
   }
@@ -24,29 +25,35 @@ qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/
   bmsbase <- QBMS::set_qbms_config(
     url = url,
     path = path,
-    time_out = time_out, 
-    no_auth = no_auth,
-    engine = engine,
-    page_size = 5000
+    time_out = time_out, # deleted in the mod version
+    no_auth = no_auth,   # deleted in the mod version
+    engine = ifelse(engine == "deltabreed", "bms", engine),
+    page_size = 5000,
+    brapi_ver = brapi_ver
   )
 
   if (!no_auth) {
-    if (is.null(username) | username == "") {
-      return()
+    
+    if(engine != "deltabreed"){
+      if (is.null(username) | is.null(password))   return()
+      if(username == "" | password == "") return()
+    } else {
+      if (is.null(password)) return() else if(password == "") return()
     }
-    if (is.null(password) | password == "") {
-      return()
-    }
+    
     if (engine == "bms") {
       bmslogin <- QBMS::login_bms(username = username, password = password)
-    } else {
+    } else if (engine == "breedbase"){
       bmslogin <- QBMS::login_breedbase(username = username, password = password)
+    } else if(engine == "deltabreed"){
+      bmslogin <- QBMS::set_token(password)
     }
   } else {
     bmslogin <- NULL
   }
   crops <- QBMS::list_crops()
-  return(list(bmsbase = bmsbase, bmslogin = bmslogin, crops = crops))
+  if(engine == "deltabreed") result <- list(bmsbase = bmsbase, crops = crops) else result <- list(bmsbase = bmsbase, bmslogin = bmslogin, crops = crops)
+  return(result)
 }
 
 #' Get Programs
@@ -59,7 +66,7 @@ qbmsprograms <- function(crop = NULL) {
   if (is.null(crop)) {
     return()
   }
-  if (QBMS::debug_qbms()$config$engine != "breedbase") {
+  if (QBMS::debug_qbms()$config$engine == "bms") {
     QBMS::set_crop(crop)
   }
   programs <- QBMS::list_programs()
@@ -124,10 +131,18 @@ dataqbms <- function(studies = NULL, dt_studies = NULL) {
 
   mult_dt <- lapply(studies, trial_study, dt_studies = dt_studies)
   engine <- QBMS::debug_qbms()$config$engine
-  if(engine %in% "breedbase") {
+  if(engine == "breedbase") {
     mult_dt <- data.table::rbindlist(
       l = mult_dt,
       fill = TRUE
+    ) %>% 
+      as.data.frame()
+  } else if(engine == "deltabreed"){
+    names(mult_dt) <- dplyr::filter(dt_studies, trimws(studyName) %in% trimws(studies))$trial
+    mult_dt <- data.table::rbindlist(
+      l = mult_dt,
+      fill = TRUE,
+      idcol = "trial"
     ) %>% 
       as.data.frame()
   } else {
@@ -139,7 +154,6 @@ dataqbms <- function(studies = NULL, dt_studies = NULL) {
     ) %>% 
       as.data.frame()
   }
-
   
   return(mult_dt)
 }
