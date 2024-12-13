@@ -12,7 +12,7 @@
 #' @noRd
 qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/auth/login",
                       engine = c("bms", "breedbase","deltabreed"), # This was "" in the BI mod version for deltabreed
-                      path = ifelse(engine == "bms", "bmsapi", "deltabreed"),
+                      path = ifelse(engine == "bms", "bmsapi", ""),
                       time_out = ifelse(engine == "bms", 120, 300),
                       no_auth = FALSE,
                       username = NULL,
@@ -27,7 +27,7 @@ qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/
     path = path,
     time_out = time_out, # deleted in the mod version
     no_auth = no_auth,   # deleted in the mod version
-    engine = ifelse(engine == "deltabreed", "bms", engine),
+    engine = ifelse(engine == "deltabreed", "", engine),
     page_size = 5000,
     brapi_ver = brapi_ver
   )
@@ -46,13 +46,14 @@ qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/
     } else if (engine == "breedbase"){
       bmslogin <- QBMS::login_breedbase(username = username, password = password)
     } else if(engine == "deltabreed"){
-      bmslogin <- QBMS::set_token(password)
+      QBMS::set_token(password)
     }
   } else {
     bmslogin <- NULL
   }
   crops <- QBMS::list_crops()
-  if(engine == "deltabreed") result <- list(bmsbase = bmsbase, crops = crops) else result <- list(bmsbase = bmsbase, bmslogin = bmslogin, crops = crops)
+  if(engine == "deltabreed") result <- list(bmsbase = bmsbase, crops = crops) else 
+    result <- list(bmsbase = bmsbase, bmslogin = bmslogin, crops = crops)
   return(result)
 }
 

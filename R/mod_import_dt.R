@@ -491,9 +491,7 @@ mod_import_dt_server <- function(input, output, session) {
     crop <- input$Id008
     tryCatch(
       {
-        if(input$engine != "deltabreed") 
-          list_programs <- qbmsprograms(crop = crop)
-        else list_programs <- qbmsprograms()
+        list_programs <- qbmsprograms(crop = crop)
       },
       error = function(e) {
         shinytoastr::toastr_error(
