@@ -3,7 +3,7 @@
 
 
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-green.svg)](https://www.tidyverse.org/lifecycle/#experimental)
+stable](https://img.shields.io/badge/lifecycle-stable-green.svg)](https://www.tidyverse.org/lifecycle/#stable)
 
 
 Mr. Bean is an easy to use R-Shiny web-app that simplifies the analysis of large-scale plant breeding experimental analysis by using the power and versatility of Linear Mixed Models (LMM). This app combines the analytical robustness and speed of ASReml and SpATS with the visual power offered by R.  Mr. Bean provides a graphical workflow for importing data, identifying outliers, and fitting field data using LMM with or without spatial correction. The results are BLUPs/BLUEs predictions and heritabilities for single-environmental experiments or multiple-environmental trial (MET) analysis. In addition, Mr. Bean also provides a module for exploring results from METs using several graphical and multivariate techniques.
@@ -49,10 +49,12 @@ A running demo is on [shinyapps.io](https://beanteam.shinyapps.io/MrBean_BETA/).
 
 ### Acknowledgments
 
-> * [Bean Breeding Program - International Center for Tropical Agriculture (CIAT)](https://alliancebioversityciat.org/)
-> * [Big Data Pipeline Unit (NDSU)](https://sites.google.com/ndsu.edu/plsc-bpdm/home)
+* [Bean Breeding Program - International Center for Tropical Agriculture (CIAT)](https://alliancebioversityciat.org/)
+* [Big Data Pipeline Unit (NDSU)](https://sites.google.com/ndsu.edu/plsc-bpdm/home)
+  * Ana Maria Heilman
+  * Didier Murillo Florez
 
-<br>
+## Code of Conduct
 
 Please note that the ‘MrBean’ project is released with a [Contributor
 Code of Conduct](CODE_OF_CONDUCT.md). By contributing to this project,
