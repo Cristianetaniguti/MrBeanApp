@@ -37,7 +37,11 @@ qbmsbrapi <- function(url = "https://bms.ciat.cgiar.org/ibpworkbench/controller/
     if (is.null(password) | password == "") {
       return()
     }
-    bmslogin <- QBMS::login_bms(username = username, password = password)
+    if (engine == "bms") {
+      bmslogin <- QBMS::login_bms(username = username, password = password)
+    } else {
+      bmslogin <- QBMS::login_breedbase(username = username, password = password)
+    }
   } else {
     bmslogin <- NULL
   }
@@ -55,7 +59,9 @@ qbmsprograms <- function(crop = NULL) {
   if (is.null(crop)) {
     return()
   }
-  QBMS::set_crop(crop)
+  if (QBMS::debug_qbms()$config$engine != "breedbase") {
+    QBMS::set_crop(crop)
+  }
   programs <- QBMS::list_programs()
   return(programs)
 }
